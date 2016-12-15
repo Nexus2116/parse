@@ -18,10 +18,8 @@ use models\Model;
  */
 class Hdkinohit
 {
-    /**
-     *
-     */
     const HOST = 'hdkinohit.net';
+    const RSS = 'http://' . self::HOST . '/rss.xml';
 
     /**
      * @var string
@@ -34,47 +32,59 @@ class Hdkinohit
     public function start()
     {
         $model = new Model();
-        $url = 'http://' . self::HOST . '/page/';
-        for ($i = 0; $i < 301; $i++) {
-            echo 'page: ' . $i . "\n";
-            $html = $this->getHtml($url . $i);
-            $links = $this->getLinks($html);
-            $arr = [];
-            foreach ($links as $link) {
-                $this->html = $this->getHtml($link);
+//        $url = 'http://' . self::HOST . '/page/';
+//        for ($i = 302; $i > 0; $i--) {
+//            echo 'page: ' . $i . "\n";
+//            $html = $this->getHtml($url . $i);
+//            $links = $this->getLinks($html);
+//            $this->save($links, $model);
+//        }
 
-                if (empty($this->getVideoId()))
-                    continue;
+        if ($links = $this->getLinksRss($this->getHtml(self::RSS)))
+            $this->save($links, $model);
 
-                $arr['title'] = $this->getTitle();
-                $arr['title_hash'] = md5($this->getTitle());
-                $arr['description'] = $this->getDescription();
-                $arr['link_video'] = $this->getVideoId();
-                $arr['year'] = $this->getYear();
-                $arr['site'] = self::HOST;
-                $arr['url'] = $link;
+    }
 
-                $model->table = 'images';
-                $arr['image_id'] = $model->insert(['alias' => $this->getImage()]);
+    private function save($links, $model)
+    {
+        /** @var Model $model */
+        $arr = [];
+        foreach ($links as $link) {
+            $this->html = $this->getHtml($link);
+            $hash_title = md5($this->getTitle());
 
-                $model->table = 'films';
-                $filmId = $model->insert($arr);
+            if (empty($this->getVideoId()) || $model->hasTitle($hash_title))
+                continue;
 
-                $model->table = 'people';
-                foreach ($this->getPeople() as $person)
-                    $model->insert([
-                        'name' => trim($person),
-                        'film_id' => $filmId
-                    ]);
+            $arr['title'] = $this->getTitle();
+            $arr['title_hash'] = $hash_title;
+            $arr['description'] = $this->getDescription();
+            $arr['link_video'] = $this->getVideoId();
+            $arr['year'] = $this->getYear();
+            $arr['site'] = self::HOST;
+            $arr['url'] = $link;
+            $arr['rips'] = $this->getRips();
+            $arr['title_trans'] = $this->getTransName($link);
 
-                $model->table = 'genre';
-                foreach ($this->getGenre() as $genre)
-                    $filmId = $model->insert([
-                        'name' => trim($genre),
-                        'film_id' => $filmId
-                    ]);
+            $model->table = 'images';
+            $arr['image_id'] = $model->insert(['alias' => $this->getImage()]);
 
-            }
+            $model->table = 'films';
+            $filmId = $model->insert($arr);
+
+            $model->table = 'people';
+            foreach ($this->getPeople() as $person)
+                $model->insert([
+                    'name' => trim($person),
+                    'film_id' => $filmId
+                ]);
+
+            $model->table = 'genre';
+            foreach ($this->getGenre() as $genre)
+                $filmId = $model->insert([
+                    'name' => trim($genre),
+                    'film_id' => $filmId
+                ]);
         }
     }
 
@@ -178,6 +188,38 @@ class Hdkinohit
             return explode('/', $matches['genre']);
 
         return [];
+    }
+
+    /**
+     * @return string
+     */
+    private function getRips()
+    {
+        if (preg_match('/<div class="hdkh".*>(?<rips>.*)<\/div>/u', $this->html, $matches))
+            return $matches['rips'];
+
+        return '';
+    }
+
+    /**
+     * @param $link
+     * @return string
+     */
+    private function getTransName($link)
+    {
+        if (preg_match('/\/[\d]+-(?<trans_name>.*)-[\d]{4}\.html/', $link, $matches))
+            return $matches['trans_name'];
+
+        return '';
+    }
+
+    private function getLinksRss($xml)
+    {
+        if (preg_match_all('/(?<links>http:\/\/hdkinohit.net\/filmi\d{4}\/.+\.html)/', $xml, $matches))
+            return $matches['links'];
+
+        return [];
+
     }
 
 

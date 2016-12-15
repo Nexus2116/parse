@@ -38,4 +38,14 @@ class Model extends InitDb
 
         return false;
     }
+
+    public function hasTitle($title_hash)
+    {
+        $statement = $this->pdo->prepare("SELECT * FROM films WHERE title_hash=:title_hash");
+        $statement->execute(['title_hash' => $title_hash]);
+
+        return boolval($statement->rowCount());
+    }
+
+
 }
