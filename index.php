@@ -8,7 +8,7 @@
  */
 
 use core\AutoLoader;
-use template\Hdkinohit;
+use app\Hdkinohit;
 
 define('ROOTPATH', __DIR__);
 

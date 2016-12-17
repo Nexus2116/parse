@@ -17,7 +17,7 @@ class Curl
     /**
      * @return mixed
      */
-    public function getHtml()
+    public function getData()
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $this->url);
